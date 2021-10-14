@@ -2,7 +2,7 @@
 
 import CodeWorld
 
-main = do -- (not (encontroRetas2 (-5,9) (-2,5) [(-6,2), (-6,7), (-5,7), (-5,2)]))
+main = do 
           activityOf ((0,0),0, (0,0)) update visualization
          
           
@@ -11,7 +11,7 @@ type World = (Angulo, Velocidade, Posicao)
 type Posicao = (Double, Double)
 type Angulo = (Double, Double)
 type Velocidade = Double
-type Reta = (Ponto, Ponto)
+type Reta = [Ponto]
 type Ponto = (Double, Double)
 type Coeficientes = (Double, Double)
 type Poligono = [Ponto]
@@ -51,49 +51,57 @@ update _ (a,v, (x,y)) = (a,v, (x,y))
   
 
 
-encontroRetas1 :: Ponto -> Ponto -> Ponto -> Ponto -> Bool
-encontroRetas1 p1 q1 p2 q2
- | ((casoGeral_1_1 > 0) && (casoGeral_1_2 < 0)) || ((casoGeral_1_1 < 0) && (casoGeral_1_2 > 0))
- && ((casoGeral_2_1 > 0) && (casoGeral_2_2 < 0)) || ((casoGeral_2_1 < 0) && (casoGeral_2_2 > 0)) = True
- | ((casoGeral_1_1 == 0) && (casoGeral_1_2 == 0)) && ((casoGeral_2_1 == 0) && (casoGeral_2_2 == 0) &&
- (projecoes)) = True
- |otherwise = False
- where
- p1q1 = vectorDifference p1 q1
- q1p2 = vectorDifference q1 p2
- q1q2 = vectorDifference q1 q2
+pontoIntersecRetas :: Reta -> Reta -> Ponto
+pontoIntersecRetas [(x0,y0),(x1,y1)] [(x2,y2),(x3,y3)] 
+                                         | x0 == x1 && x2 == x3 && x0 /= x2 = error "As retas são paralelas"
+                                         | x0 == x1 && x2 == x3 && x0 == x2 = error "As retas são coincidentes"
+                                         | x0 == x1 && x2 /= x3 = (head [ x | x<-[x2..x3], x == x0, y<-[y0..y1], a2 * x == y ], a2 * head [ x | x<-[x2..x3], x == x0, y<-[y0..y1], a2 * x == y ] + b2)
+                                         | x0 /= x1 && x2 == x3 = (head [ x | x<-[x0..x1], x == x2, y<-[y2..y3], a1 * x == y ], a1 * head [ x | x<-[x0..x1], x == x2, y<-[y2..y3], a1 * x == y ] + b1)
+                                         | [] == pontoH = error "As retas não se tocam"
+                                         | a1 == a2 && b1 /= b2 = error "As retas são paralelas"
+                                         | a1 == a2 && b1 == b2 = error "As retas são coindicentes"
+                                         | otherwise = (head pontoH, pontoV)
+                                                       where a1 = fst (equacaoreta reta1)
+                                                             a2 = fst (equacaoreta reta2)
+                                                             b1 = snd (equacaoreta reta1)
+                                                             b2 = snd (equacaoreta reta2)
+                                                             reta1 =  [(x0,y0),(x1,y1)]
+                                                             reta2 =  [(x2,y2),(x3,y3)]
+                                                             pontoH = [x | x<-[min x0 x1..max x0 x1], x<-[min x2 x3..max x2 x3], (a1 * x) + b1 == (a2 * x) + b2]
+                                                             pontoV = (a1 * head pontoH) + b1       
+intersecRetasBool :: Reta -> Reta -> Bool
+intersecRetasBool [(x0,y0),(x1,y1)] [(x2,y2),(x3,y3)] 
+                                         | x0 == x1 && x2 == x3 && x0 /= x2 = False
+                                         | x0 == x1 && x2 == x3 && x0 == x2 = False
+                                         | x0 == x1 && x2 /= x3 = True
+                                         | x0 /= x1 && x2 == x3 = True
+                                         | [] == pontoH = False
+                                         | a1 == a2 && b1 /= b2 = False
+                                         | a1 == a2 && b1 == b2 = True
+                                         | otherwise = True
+                                                       where a1 = fst (equacaoreta reta1)
+                                                             a2 = fst (equacaoreta reta2)
+                                                             b1 = snd (equacaoreta reta1)
+                                                             b2 = snd (equacaoreta reta2)
+                                                             reta1 =  [(x0,y0),(x1,y1)]
+                                                             reta2 =  [(x2,y2),(x3,y3)]
+                                                             pontoH = [x | x<-[min x0 x1..max x0 x1], x<-[min x2 x3..max x2 x3], (a1 * x) + b1 == (a2 * x) + b2]
+                                                             pontoV = (a1 * head pontoH) + b1     
+                                                                                                    
+                                                             
+intersecRetaPoligonoBool :: Reta -> Poligono -> Bool -- me da True se houver interseccao entre uma reta e um poligono
+intersecRetaPoligonoBool reta poligono = [] /= [g | g<-pontosRetaPol, intersecRetasBool reta g == True]
+                                           where pontosRetaPol = [[poligono !! x, poligono !! (x+1)] | x<-[0..length poligono - 2]] ++ [[poligono !! 0, poligono !! (length poligono - 1)]]
+equacaoreta :: Reta -> Coeficientes
+equacaoreta [(x1, y1), (x2, y2)] = (a, b)
+                 where  a  = (y2 - y1) / (x2 - x1)
+                        b  = y1 - (a * x1)
 
- p2q2 = vectorDifference p2 q2
- q2p1 = vectorDifference q2 p1
- q2q1 = vectorDifference q2 q1
+intersecPoligonosBool :: Poligono -> Poligono -> Bool 
+intersecPoligonosBool poligono1 poligono2 = [] /= [g | g<-pontosRetaPol1, f<-pontosRetaPol2, intersecRetasBool f g == True]
+                                           where pontosRetaPol1 = [[poligono1 !! x, poligono1 !! (x+1)] | x<-[0..length poligono1 - 2]] ++ [[poligono1 !! 0, poligono1 !! (length poligono1 - 1)]]
+                                                 pontosRetaPol2 = [[poligono2 !! x, poligono2 !! (x+1)] | x<-[0..length poligono2 - 2]] ++ [[poligono2 !! 0, poligono2 !! (length poligono2 - 1)]]
 
- casoGeral_1_1 = fst p1q1 * snd q1p2 - snd p1q1 * fst q1p2
- casoGeral_1_2 = fst p1q1 * snd q1q2 - snd p1q1 * fst q1q2
-
- casoGeral_2_1 = fst p2q2 * snd q2p1 - snd p2q2 * fst q2p1
- casoGeral_2_2 = fst p2q2 * snd q2q1 - snd p2q2 * fst q2q1
-
-
- projX1 = (fst p1q1, 0)
- projX2 = (fst p2q2, 0)
- projY1 = (0, snd p1q1)
- projY2 = (0, snd p2q2)
-
- projecoes = encontroRetas1 projX1 projX2 projY1 projY2
-
-encontroRetas2 :: Ponto -> Ponto -> [Ponto] -> Bool
-encontroRetas2 p1 q1 pqS = or[encontroRetas1 p1 q1 pp qq |
- (pp, qq) <- zip pqS pqSswap]
- where
-  pqSswap = concat [(tail pqS), [head pqS]]
-
-encontroPoligon :: [Point] -> [Point] -> Bool
-encontroPoligon pqS1 pqS2 = or[encontroRetas1 pp1 qq1 pp2 qq2
-                            | (pp1, qq1) <- zip pqS1 pqSswap1,
-                              (pp2, qq2) <- zip pqS2 pqSswap2]
-                       where pqSswap1 = concat [(tail pqS1), [head pqS1]]
-                             pqSswap2 = concat [(tail pqS2), [head pqS2]]
-     
 areaPoligono :: Poligono -> Double
 areaPoligono poligono =  abs ( ( (sum [x1 * y2 - x2 *  y1 | x<-[0..length poligono - 2],  let x1 = fst (poligono !! x)
                                                                                               x2 = fst (poligono !! ((x+1)))
@@ -107,7 +115,7 @@ areaPoligono poligono =  abs ( ( (sum [x1 * y2 - x2 *  y1 | x<-[0..length poligo
                         
 
 centroidePoligono :: Poligono -> Ponto
-centroidePoligono poligono = (-a, -b)
+centroidePoligono poligono = (abs a, abs b)
                            where a = (sum [(x1 + x2) * (x1 * y2 - x2 * y1) | x<-[0..length poligono -2], let x1 = fst (poligono !! x)
                                                                                                              x2 = fst (poligono !! (x+1))
                                                                                                              y1 = snd (poligono !! x)
@@ -127,7 +135,6 @@ centroidePoligono poligono = (-a, -b)
                                                                                                               x1 = fst (poligono !! 0)
                                                                                                               yn = snd (poligono !! (length poligono - 1))
 
-                                                                                                            
- 
 
-                                                          
+                                         
+          
